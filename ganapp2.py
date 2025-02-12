@@ -58,6 +58,16 @@ def load_custom_images(data_dir, img_size=(64, 64)):
         images.append(np.fliplr(img))  # Add flipped version
     return np.array(images)
 
+# Apply smoothing to the image
+def apply_smoothing(image, smoothing_level):
+    """
+    Apply smoothing to the image based on the smoothing level.
+    smoothing_level: A value between 0 and 10 (from the slider).
+    """
+    # Scale the pixel values based on the smoothing level
+    smoothed_image = image * (smoothing_level / 10.0)
+    return smoothed_image
+
 # Train the GAN
 def train_gan(generator, discriminator, gan, latent_dim, data_dir, epochs=10000, batch_size=128):
     try:
@@ -118,7 +128,7 @@ def main():
 
     # Streamlit UI
     epochs = st.slider("Number of Epochs", 100, 10000, 1000)
-    batch_size = st.slider("Batch Size", 16, 64, 34)  # Set max batch size to 34
+    batch_size = st.slider("Batch Size", 16, 128, 32)  # Set max batch size to 128
 
     if st.button("Train GAN"):
         train_gan(generator, discriminator, gan, latent_dim, data_dir, epochs, batch_size)
@@ -132,8 +142,8 @@ def main():
     generated_image = generator.predict(noise)
     generated_image = 0.5 * generated_image + 0.5  # Rescale to [0, 1]
 
-    # Apply smoothing (this is a placeholder for actual smoothing logic)
-    smoothed_image = generated_image * (layer_slider / 10.0)
+    # Apply smoothing based on the slider value
+    smoothed_image = apply_smoothing(generated_image, layer_slider)
 
     fig, ax = plt.subplots(1, 1, figsize=(5, 5))
     ax.imshow(smoothed_image[0])
