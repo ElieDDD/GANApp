@@ -6,14 +6,16 @@ import matplotlib.pyplot as plt
 import os
 from PIL import Image
 
-# Define the Generator and Discriminator models (smaller architecture)
+# Define the Generator and Discriminator models
 def build_generator(latent_dim):
     model = tf.keras.Sequential([
         layers.Dense(128 * 8 * 8, input_dim=latent_dim, name="generator_dense_1"),
         layers.Reshape((8, 8, 128), name="generator_reshape_1"),
-        layers.Conv2DTranspose(64, kernel_size=4, strides=2, padding='same', name="generator_conv2d_transpose_1"),
+        layers.Conv2DTranspose(128, kernel_size=4, strides=2, padding='same', name="generator_conv2d_transpose_1"),
         layers.LeakyReLU(alpha=0.2, name="generator_leaky_relu_1"),
-        layers.Conv2DTranspose(3, kernel_size=4, strides=2, padding='same', activation='tanh', name="generator_conv2d_transpose_2")
+        layers.Conv2DTranspose(64, kernel_size=4, strides=2, padding='same', name="generator_conv2d_transpose_2"),
+        layers.LeakyReLU(alpha=0.2, name="generator_leaky_relu_2"),
+        layers.Conv2DTranspose(3, kernel_size=4, strides=2, padding='same', activation='tanh', name="generator_conv2d_transpose_3")
     ], name="generator")
     return model
 
@@ -57,7 +59,7 @@ def load_custom_images(data_dir, img_size=(64, 64)):
     return np.array(images)
 
 # Train the GAN
-def train_gan(generator, discriminator, gan, latent_dim, data_dir, epochs=10000, batch_size=32):  # Smaller batch size
+def train_gan(generator, discriminator, gan, latent_dim, data_dir, epochs=10000, batch_size=128):
     try:
         images = load_custom_images(data_dir, img_size=(64, 64))
         dataset = tf.data.Dataset.from_tensor_slices(images).shuffle(len(images)).batch(batch_size)
@@ -67,19 +69,22 @@ def train_gan(generator, discriminator, gan, latent_dim, data_dir, epochs=10000,
 
     for epoch in range(epochs):
         for real_images in dataset:
+            # Dynamically adjust the batch size based on the actual number of images
+            current_batch_size = real_images.shape[0]
+
             # Train Discriminator
-            noise = np.random.normal(0, 1, (batch_size, latent_dim))
+            noise = np.random.normal(0, 1, (current_batch_size, latent_dim))
             fake_images = generator.predict(noise)
 
-            real_labels = np.ones((batch_size, 1))
-            fake_labels = np.zeros((batch_size, 1))
+            real_labels = np.ones((current_batch_size, 1))
+            fake_labels = np.zeros((current_batch_size, 1))
 
             d_loss_real = discriminator.train_on_batch(real_images, real_labels)
             d_loss_fake = discriminator.train_on_batch(fake_images, fake_labels)
             d_loss = 0.5 * np.add(d_loss_real, d_loss_fake)
 
             # Train Generator
-            noise = np.random.normal(0, 1, (batch_size, latent_dim))
+            noise = np.random.normal(0, 1, (current_batch_size, latent_dim))
             g_loss = gan.train_on_batch(noise, real_labels)
 
         if epoch % 100 == 0:
@@ -113,7 +118,7 @@ def main():
 
     # Streamlit UI
     epochs = st.slider("Number of Epochs", 100, 10000, 1000)
-    batch_size = st.slider("Batch Size", 16, 64, 32)  # Smaller batch size
+    batch_size = st.slider("Batch Size", 16, 64, 34)  # Set max batch size to 34
 
     if st.button("Train GAN"):
         train_gan(generator, discriminator, gan, latent_dim, data_dir, epochs, batch_size)
