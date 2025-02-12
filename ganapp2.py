@@ -8,31 +8,31 @@ import os
 # Define the Generator and Discriminator models
 def build_generator(latent_dim):
     model = tf.keras.Sequential([
-        layers.Dense(128 * 8 * 8, input_dim=latent_dim),
-        layers.Reshape((8, 8, 128)),
-        layers.Conv2DTranspose(128, kernel_size=4, strides=2, padding='same'),
-        layers.LeakyReLU(alpha=0.2),
-        layers.BatchNormalization(),
-        layers.Conv2DTranspose(64, kernel_size=4, strides=2, padding='same'),
-        layers.LeakyReLU(alpha=0.2),
-        layers.BatchNormalization(),
-        layers.Conv2DTranspose(3, kernel_size=4, strides=2, padding='same', activation='tanh')
-    ])
+        layers.Dense(128 * 8 * 8, input_dim=latent_dim, name="generator_dense_1"),
+        layers.Reshape((8, 8, 128), name="generator_reshape_1"),
+        layers.Conv2DTranspose(128, kernel_size=4, strides=2, padding='same', name="generator_conv2d_transpose_1"),
+        layers.LeakyReLU(alpha=0.2, name="generator_leaky_relu_1"),
+        layers.BatchNormalization(name="generator_batch_norm_1"),
+        layers.Conv2DTranspose(64, kernel_size=4, strides=2, padding='same', name="generator_conv2d_transpose_2"),
+        layers.LeakyReLU(alpha=0.2, name="generator_leaky_relu_2"),
+        layers.BatchNormalization(name="generator_batch_norm_2"),
+        layers.Conv2DTranspose(3, kernel_size=4, strides=2, padding='same', activation='tanh', name="generator_conv2d_transpose_3")
+    ], name="generator")
     return model
 
 def build_discriminator():
     model = tf.keras.Sequential([
-        layers.Conv2D(64, kernel_size=4, strides=2, padding='same', input_shape=(64, 64, 3)),
-        layers.LeakyReLU(alpha=0.2),
-        layers.Conv2D(128, kernel_size=4, strides=2, padding='same'),
-        layers.LeakyReLU(alpha=0.2),
-        layers.BatchNormalization(),
-        layers.Conv2D(256, kernel_size=4, strides=2, padding='same'),
-        layers.LeakyReLU(alpha=0.2),
-        layers.BatchNormalization(),
-        layers.Flatten(),
-        layers.Dense(1, activation='sigmoid')
-    ])
+        layers.Conv2D(64, kernel_size=4, strides=2, padding='same', input_shape=(64, 64, 3), name="discriminator_conv2d_1"),
+        layers.LeakyReLU(alpha=0.2, name="discriminator_leaky_relu_1"),
+        layers.Conv2D(128, kernel_size=4, strides=2, padding='same', name="discriminator_conv2d_2"),
+        layers.LeakyReLU(alpha=0.2, name="discriminator_leaky_relu_2"),
+        layers.BatchNormalization(name="discriminator_batch_norm_1"),
+        layers.Conv2D(256, kernel_size=4, strides=2, padding='same', name="discriminator_conv2d_3"),
+        layers.LeakyReLU(alpha=0.2, name="discriminator_leaky_relu_3"),
+        layers.BatchNormalization(name="discriminator_batch_norm_2"),
+        layers.Flatten(name="discriminator_flatten_1"),
+        layers.Dense(1, activation='sigmoid', name="discriminator_dense_1")
+    ], name="discriminator")
     return model
 
 # Define the GAN
@@ -41,7 +41,7 @@ def build_gan(generator, discriminator):
     model = tf.keras.Sequential([
         generator,
         discriminator
-    ])
+    ], name="gan")
     return model
 
 # Compile the models
