@@ -6,18 +6,14 @@ import matplotlib.pyplot as plt
 import os
 from PIL import Image
 
-# Define the Generator and Discriminator models
+# Define the Generator and Discriminator models (smaller architecture)
 def build_generator(latent_dim):
     model = tf.keras.Sequential([
         layers.Dense(128 * 8 * 8, input_dim=latent_dim, name="generator_dense_1"),
         layers.Reshape((8, 8, 128), name="generator_reshape_1"),
-        layers.Conv2DTranspose(128, kernel_size=4, strides=2, padding='same', name="generator_conv2d_transpose_1"),
+        layers.Conv2DTranspose(64, kernel_size=4, strides=2, padding='same', name="generator_conv2d_transpose_1"),
         layers.LeakyReLU(alpha=0.2, name="generator_leaky_relu_1"),
-        layers.BatchNormalization(name="generator_batch_norm_1"),
-        layers.Conv2DTranspose(64, kernel_size=4, strides=2, padding='same', name="generator_conv2d_transpose_2"),
-        layers.LeakyReLU(alpha=0.2, name="generator_leaky_relu_2"),
-        layers.BatchNormalization(name="generator_batch_norm_2"),
-        layers.Conv2DTranspose(3, kernel_size=4, strides=2, padding='same', activation='tanh', name="generator_conv2d_transpose_3")
+        layers.Conv2DTranspose(3, kernel_size=4, strides=2, padding='same', activation='tanh', name="generator_conv2d_transpose_2")
     ], name="generator")
     return model
 
@@ -25,12 +21,10 @@ def build_discriminator():
     model = tf.keras.Sequential([
         layers.Conv2D(64, kernel_size=4, strides=2, padding='same', input_shape=(64, 64, 3), name="discriminator_conv2d_1"),
         layers.LeakyReLU(alpha=0.2, name="discriminator_leaky_relu_1"),
+        layers.Dropout(0.3),  # Add dropout for regularization
         layers.Conv2D(128, kernel_size=4, strides=2, padding='same', name="discriminator_conv2d_2"),
         layers.LeakyReLU(alpha=0.2, name="discriminator_leaky_relu_2"),
-        layers.BatchNormalization(name="discriminator_batch_norm_1"),
-        layers.Conv2D(256, kernel_size=4, strides=2, padding='same', name="discriminator_conv2d_3"),
-        layers.LeakyReLU(alpha=0.2, name="discriminator_leaky_relu_3"),
-        layers.BatchNormalization(name="discriminator_batch_norm_2"),
+        layers.Dropout(0.3),  # Add dropout for regularization
         layers.Flatten(name="discriminator_flatten_1"),
         layers.Dense(1, activation='sigmoid', name="discriminator_dense_1")
     ], name="discriminator")
@@ -50,28 +44,20 @@ def compile_models(generator, discriminator, gan):
     discriminator.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
     gan.compile(optimizer='adam', loss='binary_crossentropy')
 
-# Custom function to load images with non-standard names
+# Custom function to load and augment images
 def load_custom_images(data_dir, img_size=(64, 64)):
-    # Get all image paths in the directory
     image_paths = [os.path.join(data_dir, f) for f in os.listdir(data_dir) if f.endswith('.jpg')]
-    print(f"Found {len(image_paths)} images in {data_dir}")  # Debug statement
-
     images = []
     for path in image_paths:
-        try:
-            img = Image.open(path).resize(img_size)
-            img = np.array(img) / 127.5 - 1.0  # Normalize to [-1, 1]
-            images.append(img)
-        except Exception as e:
-            print(f"Error loading image {path}: {e}")  # Debug statement
-
-    if not images:
-        raise ValueError("No images were loaded. Check the dataset path and file format.")
-
+        img = Image.open(path).resize(img_size)
+        img = np.array(img) / 127.5 - 1.0  # Normalize to [-1, 1]
+        images.append(img)
+        # Augment the image by flipping it horizontally
+        images.append(np.fliplr(img))  # Add flipped version
     return np.array(images)
 
 # Train the GAN
-def train_gan(generator, discriminator, gan, latent_dim, data_dir, epochs=10000, batch_size=128):
+def train_gan(generator, discriminator, gan, latent_dim, data_dir, epochs=10000, batch_size=32):  # Smaller batch size
     try:
         images = load_custom_images(data_dir, img_size=(64, 64))
         dataset = tf.data.Dataset.from_tensor_slices(images).shuffle(len(images)).batch(batch_size)
@@ -115,7 +101,7 @@ def plot_generated_images(generator, latent_dim, num_images=10):
 # Streamlit App
 def main():
     st.title("GAN Training with Streamlit")
-    st.write("This app trains a GAN on a custom dataset and visualizes the generated faces.")
+    st.write("This app trains a GAN on a small dataset and visualizes the generated faces.")
 
     # Parameters
     latent_dim = 100
@@ -127,7 +113,7 @@ def main():
 
     # Streamlit UI
     epochs = st.slider("Number of Epochs", 100, 10000, 1000)
-    batch_size = st.slider("Batch Size", 32, 256, 128)
+    batch_size = st.slider("Batch Size", 16, 64, 32)  # Smaller batch size
 
     if st.button("Train GAN"):
         train_gan(generator, discriminator, gan, latent_dim, data_dir, epochs, batch_size)
