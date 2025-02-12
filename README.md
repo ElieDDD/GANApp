@@ -1,0 +1,2 @@
+# GANApp
+GAN APP for AIF
