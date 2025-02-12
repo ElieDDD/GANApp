@@ -52,18 +52,32 @@ def compile_models(generator, discriminator, gan):
 
 # Custom function to load images with non-standard names
 def load_custom_images(data_dir, img_size=(64, 64)):
+    # Get all image paths in the directory
     image_paths = [os.path.join(data_dir, f) for f in os.listdir(data_dir) if f.endswith('.jpg')]
+    print(f"Found {len(image_paths)} images in {data_dir}")  # Debug statement
+
     images = []
     for path in image_paths:
-        img = Image.open(path).resize(img_size)
-        img = np.array(img) / 127.5 - 1.0  # Normalize to [-1, 1]
-        images.append(img)
+        try:
+            img = Image.open(path).resize(img_size)
+            img = np.array(img) / 127.5 - 1.0  # Normalize to [-1, 1]
+            images.append(img)
+        except Exception as e:
+            print(f"Error loading image {path}: {e}")  # Debug statement
+
+    if not images:
+        raise ValueError("No images were loaded. Check the dataset path and file format.")
+
     return np.array(images)
 
 # Train the GAN
 def train_gan(generator, discriminator, gan, latent_dim, data_dir, epochs=10000, batch_size=128):
-    images = load_custom_images(data_dir, img_size=(64, 64))
-    dataset = tf.data.Dataset.from_tensor_slices(images).shuffle(len(images)).batch(batch_size)
+    try:
+        images = load_custom_images(data_dir, img_size=(64, 64))
+        dataset = tf.data.Dataset.from_tensor_slices(images).shuffle(len(images)).batch(batch_size)
+    except ValueError as e:
+        st.error(str(e))  # Display error message in Streamlit
+        return
 
     for epoch in range(epochs):
         for real_images in dataset:
