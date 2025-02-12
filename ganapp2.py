@@ -3,7 +3,6 @@ import tensorflow as tf
 from tensorflow.keras import layers
 import numpy as np
 import matplotlib.pyplot as plt
-from PIL import Image
 import os
 
 # Define the Generator and Discriminator models
@@ -52,15 +51,16 @@ def compile_models(generator, discriminator, gan):
 
 # Load CelebA dataset
 def load_celeba(data_dir, img_size=(64, 64), batch_size=128):
-    datagen = tf.keras.preprocessing.image.ImageDataGenerator(rescale=1.0 / 127.5 - 1.0)  # Normalize to [-1, 1]
-    data_generator = datagen.flow_from_directory(
+    dataset = tf.keras.utils.image_dataset_from_directory(
         data_dir,
-        target_size=img_size,
+        label_mode=None,  # No labels needed
+        image_size=img_size,
         batch_size=batch_size,
-        class_mode=None,  # No labels needed for GAN
         shuffle=True
     )
-    return data_generator
+    # Normalize images to [-1, 1]
+    dataset = dataset.map(lambda x: (x / 127.5) - 1.0)
+    return dataset
 
 # Train the GAN
 def train_gan(generator, discriminator, gan, latent_dim, data_dir, epochs=10000, batch_size=128):
@@ -68,7 +68,7 @@ def train_gan(generator, discriminator, gan, latent_dim, data_dir, epochs=10000,
 
     for epoch in range(epochs):
         # Get a batch of real images
-        real_images = next(data_generator)
+        real_images = next(iter(data_generator))
 
         # Train Discriminator
         noise = np.random.normal(0, 1, (batch_size, latent_dim))
