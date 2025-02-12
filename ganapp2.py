@@ -4,6 +4,7 @@ from tensorflow.keras import layers
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+from PIL import Image
 
 # Define the Generator and Discriminator models
 def build_generator(latent_dim):
@@ -49,41 +50,37 @@ def compile_models(generator, discriminator, gan):
     discriminator.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
     gan.compile(optimizer='adam', loss='binary_crossentropy')
 
-# Load CelebA dataset
-def load_celeba(data_dir, img_size=(64, 64), batch_size=128):
-    dataset = tf.keras.utils.image_dataset_from_directory(
-        data_dir,
-        label_mode=None,  # No labels needed
-        image_size=img_size,
-        batch_size=batch_size,
-        shuffle=True
-    )
-    # Normalize images to [-1, 1]
-    dataset = dataset.map(lambda x: (x / 127.5) - 1.0)
-    return dataset
+# Custom function to load images with non-standard names
+def load_custom_images(data_dir, img_size=(64, 64)):
+    image_paths = [os.path.join(data_dir, f) for f in os.listdir(data_dir) if f.endswith('.jpg')]
+    images = []
+    for path in image_paths:
+        img = Image.open(path).resize(img_size)
+        img = np.array(img) / 127.5 - 1.0  # Normalize to [-1, 1]
+        images.append(img)
+    return np.array(images)
 
 # Train the GAN
 def train_gan(generator, discriminator, gan, latent_dim, data_dir, epochs=10000, batch_size=128):
-    data_generator = load_celeba(data_dir, img_size=(64, 64), batch_size=batch_size)
+    images = load_custom_images(data_dir, img_size=(64, 64))
+    dataset = tf.data.Dataset.from_tensor_slices(images).shuffle(len(images)).batch(batch_size)
 
     for epoch in range(epochs):
-        # Get a batch of real images
-        real_images = next(iter(data_generator))
+        for real_images in dataset:
+            # Train Discriminator
+            noise = np.random.normal(0, 1, (batch_size, latent_dim))
+            fake_images = generator.predict(noise)
 
-        # Train Discriminator
-        noise = np.random.normal(0, 1, (batch_size, latent_dim))
-        fake_images = generator.predict(noise)
+            real_labels = np.ones((batch_size, 1))
+            fake_labels = np.zeros((batch_size, 1))
 
-        real_labels = np.ones((batch_size, 1))
-        fake_labels = np.zeros((batch_size, 1))
+            d_loss_real = discriminator.train_on_batch(real_images, real_labels)
+            d_loss_fake = discriminator.train_on_batch(fake_images, fake_labels)
+            d_loss = 0.5 * np.add(d_loss_real, d_loss_fake)
 
-        d_loss_real = discriminator.train_on_batch(real_images, real_labels)
-        d_loss_fake = discriminator.train_on_batch(fake_images, fake_labels)
-        d_loss = 0.5 * np.add(d_loss_real, d_loss_fake)
-
-        # Train Generator
-        noise = np.random.normal(0, 1, (batch_size, latent_dim))
-        g_loss = gan.train_on_batch(noise, real_labels)
+            # Train Generator
+            noise = np.random.normal(0, 1, (batch_size, latent_dim))
+            g_loss = gan.train_on_batch(noise, real_labels)
 
         if epoch % 100 == 0:
             st.write(f"Epoch: {epoch}, D Loss: {d_loss[0]}, G Loss: {g_loss}")
@@ -104,11 +101,11 @@ def plot_generated_images(generator, latent_dim, num_images=10):
 # Streamlit App
 def main():
     st.title("GAN Training with Streamlit")
-    st.write("This app trains a GAN on the CelebA dataset and visualizes the generated faces.")
+    st.write("This app trains a GAN on a custom dataset and visualizes the generated faces.")
 
     # Parameters
     latent_dim = 100
-    data_dir = "data/celeba"  # Path to CelebA images
+    data_dir = "data/custom_images"  # Path to your custom images
     generator = build_generator(latent_dim)
     discriminator = build_discriminator()
     gan = build_gan(generator, discriminator)
