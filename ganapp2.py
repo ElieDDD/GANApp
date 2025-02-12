@@ -117,4 +117,28 @@ def main():
     compile_models(generator, discriminator, gan)
 
     # Streamlit UI
-    epochs = st.slider("Number of E
+    epochs = st.slider("Number of Epochs", 100, 10000, 1000)
+    batch_size = st.slider("Batch Size", 16, 64, 34)  # Set max batch size to 34
+
+    if st.button("Train GAN"):
+        train_gan(generator, discriminator, gan, latent_dim, data_dir, epochs, batch_size)
+
+    st.write("Adjust the slider to see the generated images at different stages of training.")
+    layer_slider = st.slider("Layer Smoothing", 0, 10, 5)
+    st.write(f"Visualizing layer smoothing at level: {layer_slider}")
+
+    # Visualize the effect of layer smoothing
+    noise = np.random.normal(0, 1, (1, latent_dim))
+    generated_image = generator.predict(noise)
+    generated_image = 0.5 * generated_image + 0.5  # Rescale to [0, 1]
+
+    # Apply smoothing (this is a placeholder for actual smoothing logic)
+    smoothed_image = generated_image * (layer_slider / 10.0)
+
+    fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+    ax.imshow(smoothed_image[0])
+    ax.axis('off')
+    st.pyplot(fig)
+
+if __name__ == "__main__":
+    main()
